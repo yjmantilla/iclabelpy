@@ -1,5 +1,5 @@
 import numpy as np
-from iclabelpy.iclabelpy import ICL_feature_extractor
+from iclabelpy.iclabelpy import ICL_feature_extractor, iclabel
 from iclabelpy.utils import topoplotFast,reref
 
 if __name__ == '__main__':
@@ -29,5 +29,5 @@ if __name__ == '__main__':
 
 
     raw = mne.read_epochs_eeglab('Y:\code\iclabelpy\data\sub-010317_PREP_clean_ICA.set')
-    ICL_feature_extractor(raw,mixing,False,True,EEG,True)
+    features = iclabel(raw,mixing,True,True,True)
     print('ok')

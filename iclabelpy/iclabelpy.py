@@ -1,16 +1,28 @@
 
+from matplotlib.pyplot import flag
 from numpy.core.fromnumeric import squeeze
-from iclabelpy.utils import topoplotFast,reref,eeg_rpsd,loadmat
+from iclabelpy.utils import topoplotFast,reref,eeg_rpsd,loadmat,eeg_autocorr_fftw
 import numpy as np
 import scipy.io as sio
 
 #import numpy.matlib as npm
 import scipy.io
-def iclabel(icawinv):
-    #features = ICL_feature_extractor(EEG, flag_autocorr)
-    pass
+def iclabel(EEG,mixing,flag_autocorr=True,flag_reref=False,test=False):
+    #% extract features
+    features = ICL_feature_extractor(EEG,mixing,flag_autocorr,flag_reref,test)
+    #% run ICL
+    #labels = run_ICL(version, features{:});
 
-def ICL_feature_extractor(EEG,mixing_,flag_autocorr=False,flag_reref=False,dummy=[],test=False):
+    # % save into EEG
+    # disp 'ICLabel: saving results...'
+    # EEG.etc.ic_classification.ICLabel.classes = ...
+    #     {'Brain', 'Muscle', 'Eye', 'Heart', ...
+    #     'Line Noise', 'Channel Noise', 'Other'};
+    # EEG.etc.ic_classification.ICLabel.classifications = labels;
+    # EEG.etc.ic_classification.ICLabel.version = version;
+    return features
+
+def ICL_feature_extractor(EEG,mixing_,flag_autocorr=True,flag_reref=False,test=False):
     raw = EEG.copy()
     mixing = mixing_.copy()
     ncomp = mixing.shape[1]
@@ -82,24 +94,23 @@ def ICL_feature_extractor(EEG,mixing_,flag_autocorr=False,flag_reref=False,dummy
 
 
     # %% calc autocorrelation?
-    # if flag_autocorr
-    #     if EEG.trials == 1
-    #         if EEG.pnts / EEG.srate > 5
-    #             autocorr = eeg_autocorr_welch(EEG);
-    #         else
-    #             autocorr = eeg_autocorr(EEG);
-    #         end
-    #     else
-    #         autocorr = eeg_autocorr_fftw(EEG);
-    #     end
+    if flag_autocorr:
+        if nepochs == 1:
+            if nframes/raw.info['sfreq'] > 5:
+                pass # autocorr = eeg_autocorr_welch(EEG);
+            else:
+                pass # autocorr = eeg_autocorr(EEG);
+        else:
+            autocorr = eeg_autocorr_fftw(icaact,raw.info['sfreq'],test=test);
 
-    #     % reshape and cast
-    #     autocorr = single(permute(autocorr, [3 2 4 1]));
-    # end
+        #% reshape and cast
+        #autocorr = single(permute(autocorr, [3 2 4 1]));
+        autocorr = np.transpose(autocorr[:, :, None,None], (2,1,3,0))
 
     # %% format outputs
-    # if flag_autocorr
-    #     features = {0.99 * topo, 0.99 * psd, 0.99 * autocorr};
-    # else
-    #     features = {0.99 * topo, 0.99 * psd};
-    # end
+    if flag_autocorr:
+        features = [0.99 * topo, 0.99 * psd, 0.99 * autocorr];
+    else:
+        features = [0.99 * topo, 0.99 * psd];
+
+    return features

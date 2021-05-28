@@ -5,7 +5,8 @@ from scipy.interpolate import griddata,Rbf
 import matplotlib.pyplot as plt
 import copy
 from gdatav4 import gdatav4
-
+import fractions
+import scipy.signal as sx
 
 def reref(input):
     data = np.copy(input)
@@ -215,3 +216,52 @@ def eeg_rpsd(icaact,srate,demixing,nfreqs=None, pct_data=None,test=False):
             temp[:,-1,:] = temp[:,-1,:]/2
         psdmed[it,:] = 20*np.log10(np.median(temp,2))
     return psdmed
+
+def next_power_of_2(x):  
+    return 1 if x == 0 else 2**(x - 1).bit_length()
+
+def eeg_autocorr_fftw(icaact_,srate_,pct_data=100,test=False):
+    srate= int(srate_)
+
+    if icaact_.ndim == 3:
+        nchannels = icaact_.shape[1]
+        nframes = icaact_.shape[2]
+        nepochs = icaact_.shape[0]
+    else:
+        nchannels = icaact_.shape[0]
+        nframes = icaact_.shape[1]
+        nepochs = 1
+
+    nfft = next_power_of_2(2*nframes-1);
+
+    icaact=np.reshape(icaact_,(nchannels,nframes,nepochs),order='F')
+
+    if test:
+        icaact=loadmat('data/icaact.mat')['icaact2']
+
+    # % calc autocorrelation
+    # fftw('planner', 'hybrid');
+    ncomp = icaact.shape[0]
+    ac = np.zeros((ncomp, nfft));
+    for it in np.arange(ncomp):
+        X = np.fft.fft(icaact[it,:,:],nfft,axis=0)
+        ac[it,:] = np.mean(np.square(np.abs(X)),axis=1)
+
+    ac = np.real(np.fft.ifft(ac,axis=1));
+
+    if nframes < srate:
+        ac = np.concatenate([ac[:,:nframes],np.zeros((ac.shape[0],srate - nframes + 1))],axis=-1);
+    else:
+        ac = ac[:,:srate+1]
+
+    # % normalize by 0-tap autocorrelation
+    ac = ac[:,:(srate+1)]/ac[:,0][:,None]
+
+    # % resample to 1 second at 100 samples/sec
+    frac = fractions.Fraction.from_float(100/256).limit_denominator()
+    p=frac.numerator
+    q=frac.denominator
+    desired_length = int((np.ceil(ac.shape[1]*p/q)).astype(int))
+    resample= sx.resample_poly(ac, desired_length, ac.shape[1],axis=-1)
+    resample = resample[:,1:]
+    return resample
