@@ -7,9 +7,9 @@ import scipy.io as sio
 
 #import numpy.matlib as npm
 import scipy.io
-def iclabel(EEG,mixing,flag_autocorr=True,flag_reref=False,test=False):
+def iclabel(EEG,mixing,demixing=None,flag_autocorr=True,flag_reref=False,test=False):
     #% extract features
-    features = ICL_feature_extractor(EEG,mixing,flag_autocorr,flag_reref,test)
+    features = ICL_feature_extractor(EEG,mixing,demixing,flag_autocorr,flag_reref,test)
     #% run ICL
     #labels = run_ICL(version, features{:});
 
@@ -22,35 +22,39 @@ def iclabel(EEG,mixing,flag_autocorr=True,flag_reref=False,test=False):
     # EEG.etc.ic_classification.ICLabel.version = version;
     return features
 
-def ICL_feature_extractor(EEG,mixing_,flag_autocorr=True,flag_reref=False,test=False):
+def ICL_feature_extractor(EEG,mixing_,demixing_=None,flag_autocorr=True,flag_reref=False,test=False):
     raw = EEG.copy()
     mixing = mixing_.copy()
     ncomp = mixing.shape[1]
-    nchannels = mixing.shape[0]
+    eeg = np.transpose(raw._data*1e6, (1,2,0)) # epochs,channels,frames to channels,frames,epochs
+    nchannels = eeg.shape[0]
 
     locs = raw._get_channel_positions()
     # see https://github.com/mne-tools/mne-python/blob/24377ad3200b6099ed47576e9cf8b27578d571ef/mne/io/eeglab/eeglab.py#L105
     
     #% assuming chanlocs are correct
     if flag_reref:
-        raw._data = reref(raw._data)
+        eeg = reref(eeg)
     # Rereference ICA Matrix
         mixing = reref(mixing)
 
     #% calculate ica activations if missing and cast to double
-    demixing = np.linalg.pinv(mixing)
-    if raw._data.ndim == 3:
-        nchannels = raw._data.shape[1]
-        nframes = raw._data.shape[2]
-        nepochs = raw._data.shape[0]
+    if demixing_ is None:
+        demixing = np.linalg.pinv(mixing)
     else:
-        nchannels = raw._data.shape[0]
-        nframes = raw._data.shape[1]
+        demixing = demixing_.copy()
+    if eeg.ndim == 3:
+        nchannels = eeg.shape[0]
+        nframes = eeg.shape[1]
+        nepochs = eeg.shape[2]
+    else:
+        nchannels = eeg.shape[0]
+        nframes = eeg.shape[1]
         nepochs = 1
 
-    icaact = np.dot(demixing,np.reshape(raw._data,(nchannels,nframes*nepochs),order='F'))
-    if raw._data.ndim == 3:
-        icaact = np.reshape(icaact,raw._data.shape,order='F')
+    icaact = demixing @ np.reshape(eeg,(nchannels,nframes*nepochs),order='F')
+    if eeg.ndim == 3:
+        icaact = np.reshape(icaact,(ncomp,nframes,nepochs),order='F')
     #EEG.icaact = double(EEG.icaact);
     #% check ica is real
     assert np.all(np.isreal(icaact)) == True

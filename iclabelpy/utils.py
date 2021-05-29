@@ -9,18 +9,21 @@ import fractions
 import scipy.signal as sx
 
 def reref(input):
+    """
+    assume nchannels,nframes,nepochs
+    """
     data = np.copy(input)
     if input.ndim == 3:
-        nchannels = input.shape[1]
-        nframes = input.shape[2]
-        nepochs = input.shape[0]
+        nchannels = input.shape[0]
+        nframes = input.shape[1]
+        nepochs = input.shape[2]
     else:
         nchannels = input.shape[0]
         nframes = input.shape[1]
         nepochs = 1
 
     # Rereference to average
-        data = np.reshape(data,(nchannels,nframes*nepochs),order='F')
+    data = np.reshape(data,(nchannels,nframes*nepochs),order='F')
     refmatrix = np.eye(nchannels)-np.ones(nchannels)*1/nchannels
     data = refmatrix @ data
     if input.ndim == 3:
@@ -160,10 +163,13 @@ def topoplotFast(locs,values,plot=False):
     return ZI,plotrad
 
 def eeg_rpsd(icaact,srate,demixing,nfreqs=None, pct_data=None,test=False):
+    """
+    assume channels,frames,epochs
+    """
     if icaact.ndim == 3:
-        nchannels = icaact.shape[1]
-        nframes = icaact.shape[2]
-        nepochs = icaact.shape[0]
+        nchannels = icaact.shape[0]
+        nframes = icaact.shape[1]
+        nepochs = icaact.shape[2]
     else:
         nchannels = icaact.shape[0]
         nframes = icaact.shape[1]
@@ -201,7 +207,7 @@ def eeg_rpsd(icaact,srate,demixing,nfreqs=None, pct_data=None,test=False):
 
     # % calculate windowed spectrums
     psdmed = np.zeros((ncomp, nfreqs));
-    icaact2=np.reshape(icaact,(nchannels,nframes,nepochs),order='F')
+    icaact2=icaact#np.reshape(icaact,(nchannels,nframes,nepochs),order='F')
     if test:
         icaact2=loadmat('data/icaact.mat')['icaact2']
     for it in np.arange(ncomp):
@@ -221,12 +227,15 @@ def next_power_of_2(x):
     return 1 if x == 0 else 2**(x - 1).bit_length()
 
 def eeg_autocorr_fftw(icaact_,srate_,pct_data=100,test=False):
+    """
+    assume channels,frames,epochs
+    """
     srate= int(srate_)
 
     if icaact_.ndim == 3:
-        nchannels = icaact_.shape[1]
-        nframes = icaact_.shape[2]
-        nepochs = icaact_.shape[0]
+        nchannels = icaact_.shape[0]
+        nframes = icaact_.shape[1]
+        nepochs = icaact_.shape[2]
     else:
         nchannels = icaact_.shape[0]
         nframes = icaact_.shape[1]
@@ -234,7 +243,7 @@ def eeg_autocorr_fftw(icaact_,srate_,pct_data=100,test=False):
 
     nfft = next_power_of_2(2*nframes-1);
 
-    icaact=np.reshape(icaact_,(nchannels,nframes,nepochs),order='F')
+    icaact=icaact_#np.reshape(icaact_,(nchannels,nframes,nepochs),order='F')
 
     if test:
         icaact=loadmat('data/icaact.mat')['icaact2']
