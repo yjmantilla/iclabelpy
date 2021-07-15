@@ -52,9 +52,14 @@ def ICL_feature_extractor(EEG,mixing_,demixing_=None,flag_autocorr=True,flag_rer
         nframes = eeg.shape[1]
         nepochs = 1
 
-    icaact = demixing @ np.reshape(eeg,(nchannels,nframes*nepochs),order='F')
-    if eeg.ndim == 3:
-        icaact = np.reshape(icaact,(ncomp,nframes,nepochs),order='F')
+    eeg_cont = np.reshape(eeg,(nchannels,nframes*nepochs),order='F')
+    if test:
+        icaact=sio.loadmat('data/icaact.mat',squeeze_me=False)['icaact2']
+    else:
+        #icaact = demixing.astype('float32') @ eeg_cont.astype('float32')
+        icaact = demixing @ eeg_cont
+        if eeg.ndim == 3:
+            icaact = np.reshape(icaact,(ncomp,nframes,nepochs),order='F')
     #EEG.icaact = double(EEG.icaact);
     #% check ica is real
     assert np.all(np.isreal(icaact)) == True
